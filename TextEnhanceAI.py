@@ -15,7 +15,7 @@ except ImportError:
 # --------------
 # Configurable model name
 # --------------
-MODEL_NAME = "llama3.1:8b"  # Adjust to your local model or naming
+MODEL_NAME = "gemma3:4b"  # Adjust to your local model or naming
 
 # --------------
 # Scratchpad folder
