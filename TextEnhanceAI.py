@@ -119,7 +119,7 @@ class EditorApp:
         # ----------------------
         # 1) Set starting size and use it as the minimum
         # ----------------------
-        self.root.geometry("800x600")
+        self.root.geometry("1280x720")
         self.root.minsize(800, 600)
 
         # 2) Initialize widgets and buttons
