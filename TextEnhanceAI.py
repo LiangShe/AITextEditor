@@ -384,32 +384,19 @@ class EditorApp:
         # Log rejection
         self.log_to_scratchpad("User rejected all changes.\n\n")
 
-    def get_text_excluding_tag(self, tag):
     def get_text_excluding_tag(self, tag_to_exclude):
         """
         Helper to rebuild text from the text widget while excluding a particular tag’s text.
         This is a more efficient implementation than iterating character by character.
         """
-        result = ""
-        idx = "1.0"
-        while True:
-            if float(self.text_area.index(idx)) >= float(self.text_area.index(tk.END)):
-                break
         # dump() provides a sequence of (type, value, index) tuples.
         # We can iterate through them and build the string, skipping text
         # that falls under the tag we want to exclude.
         content = self.text_area.dump("1.0", "end-1c", text=True, tag=True)
 
-            char = self.text_area.get(idx)
-            current_tags = self.text_area.tag_names(idx)
-            if tag not in current_tags:
-                result += char
         result_parts = []
         is_excluded = False
 
-            idx = self.text_area.index(f"{idx}+1c")
-            if idx == self.text_area.index(tk.END):
-                break
         for item_type, value, index in content:
             if item_type == "tagon" and value == tag_to_exclude:
                 is_excluded = True
@@ -418,7 +405,6 @@ class EditorApp:
             elif item_type == "text" and not is_excluded:
                 result_parts.append(value)
 
-        return result
         return "".join(result_parts)
 
     # --------------
