@@ -13,6 +13,11 @@ except ImportError:
     Client = None
 
 # --------------
+# Configurable model name
+# --------------
+MODEL_NAME = "llama3.1:8b"  # Adjust to your local model or naming
+
+# --------------
 # Configurable prompts for each button
 # --------------
 PROMPTS = {
@@ -260,7 +265,7 @@ class EditorApp:
         response = {}
         try:
             response = self.ollama_client.chat(
-                model="llama3.1:8b",  # Adjust to your local model or naming
+                model=MODEL_NAME,
                 messages=history,
                 options={
                     'num_predict': 2048,
@@ -330,10 +335,16 @@ class EditorApp:
         """
         diff = difflib.ndiff(original_text.split(), edited_text.split())
         
+        # Split on whitespace while preserving it to maintain formatting
+        original_tokens = re.split(r'(\s+)', original_text)
+        edited_tokens = re.split(r'(\s+)', edited_text)
+        diff = difflib.ndiff(original_tokens, edited_tokens)
+
         user_text_bold = []
         edited_text_bold = []
 
         for token in diff:
+            word = token[2:]
             if token.startswith("  "):
                 # No change
                 word = token[2:]
@@ -343,13 +354,23 @@ class EditorApp:
                 # Removed word
                 word = token[2:]
                 user_text_bold.append(f"**{word}**")
+                if word.strip():  # Only bold non-whitespace
+                    user_text_bold.append(f"**{word}**")
+                else:
+                    user_text_bold.append(word)
             elif token.startswith("+ "):
                 # Added word
                 word = token[2:]
                 edited_text_bold.append(f"**{word}**")
+                if word.strip(): # Only bold non-whitespace
+                    edited_text_bold.append(f"**{word}**")
+                else:
+                    edited_text_bold.append(word)
 
         # Rebuild as strings
         return " ".join(user_text_bold), " ".join(edited_text_bold)
+        # Rebuild as strings, joining without extra spaces
+        return "".join(user_text_bold), "".join(edited_text_bold)
 
     # --------------
     # Accept / Reject changes
@@ -373,25 +394,41 @@ class EditorApp:
         self.log_to_scratchpad("User rejected all changes.\n\n")
 
     def get_text_excluding_tag(self, tag):
+    def get_text_excluding_tag(self, tag_to_exclude):
         """
         Helper to rebuild text from the text widget while excluding a particular tag’s text.
+        This is a more efficient implementation than iterating character by character.
         """
         result = ""
         idx = "1.0"
         while True:
             if float(self.text_area.index(idx)) >= float(self.text_area.index(tk.END)):
                 break
+        # dump() provides a sequence of (type, value, index) tuples.
+        # We can iterate through them and build the string, skipping text
+        # that falls under the tag we want to exclude.
+        content = self.text_area.dump("1.0", "end-1c", text=True, tag=True)
 
             char = self.text_area.get(idx)
             current_tags = self.text_area.tag_names(idx)
             if tag not in current_tags:
                 result += char
+        result_parts = []
+        is_excluded = False
 
             idx = self.text_area.index(f"{idx}+1c")
             if idx == self.text_area.index(tk.END):
                 break
+        for item_type, value, index in content:
+            if item_type == "tagon" and value == tag_to_exclude:
+                is_excluded = True
+            elif item_type == "tagoff" and value == tag_to_exclude:
+                is_excluded = False
+            elif item_type == "text" and not is_excluded:
+                result_parts.append(value)
 
         return result
+        return "".join(result_parts)
 
     # --------------
     # Logging / Scratchpad
