@@ -114,7 +114,7 @@ def create_tooltip(widget, text):
 class EditorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("TextEnhanceAI Editor with Local LLM - V 0.11")
+        self.root.title("AITextEditor with Local LLM - V 0.11")
 
         # ----------------------
         # 1) Set starting size and use it as the minimum
@@ -259,7 +259,7 @@ class EditorApp:
             os.makedirs(SCRATCHPAD_DIR, exist_ok=True)
             
             # Construct the full path for the scratchpad file
-            filename = f"TextEnhanceAI-scratchpad_{self.first_change_time}.md"
+            filename = f"AITextEditor-scratchpad_{self.first_change_time}.md"
             self.scratchpad_filename = os.path.join(SCRATCHPAD_DIR, filename)
 
         # Prepare the conversation
