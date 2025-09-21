@@ -18,6 +18,11 @@ except ImportError:
 MODEL_NAME = "llama3.1:8b"  # Adjust to your local model or naming
 
 # --------------
+# Scratchpad folder
+# --------------
+SCRATCHPAD_DIR = "log"
+
+# --------------
 # Configurable prompts for each button
 # --------------
 PROMPTS = {
@@ -250,7 +255,12 @@ class EditorApp:
         # If it's the first time we are modifying text, create the scratchpad
         if not self.first_change_time:
             self.first_change_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.scratchpad_filename = f"TextEnhanceAI-scratchpad_{self.first_change_time}.md"
+            # Ensure the scratchpad directory exists
+            os.makedirs(SCRATCHPAD_DIR, exist_ok=True)
+            
+            # Construct the full path for the scratchpad file
+            filename = f"TextEnhanceAI-scratchpad_{self.first_change_time}.md"
+            self.scratchpad_filename = os.path.join(SCRATCHPAD_DIR, filename)
 
         # Prepare the conversation
         system_prompt = (
