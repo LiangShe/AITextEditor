@@ -333,8 +333,6 @@ class EditorApp:
          - In the 'User Text', highlight removed words in bold
          - In the 'Edited Text', highlight added words in bold
         """
-        diff = difflib.ndiff(original_text.split(), edited_text.split())
-        
         # Split on whitespace while preserving it to maintain formatting
         original_tokens = re.split(r'(\s+)', original_text)
         edited_tokens = re.split(r'(\s+)', edited_text)
@@ -347,28 +345,21 @@ class EditorApp:
             word = token[2:]
             if token.startswith("  "):
                 # No change
-                word = token[2:]
                 user_text_bold.append(word)
                 edited_text_bold.append(word)
             elif token.startswith("- "):
                 # Removed word
-                word = token[2:]
-                user_text_bold.append(f"**{word}**")
                 if word.strip():  # Only bold non-whitespace
                     user_text_bold.append(f"**{word}**")
                 else:
                     user_text_bold.append(word)
             elif token.startswith("+ "):
                 # Added word
-                word = token[2:]
-                edited_text_bold.append(f"**{word}**")
                 if word.strip(): # Only bold non-whitespace
                     edited_text_bold.append(f"**{word}**")
                 else:
                     edited_text_bold.append(word)
 
-        # Rebuild as strings
-        return " ".join(user_text_bold), " ".join(edited_text_bold)
         # Rebuild as strings, joining without extra spaces
         return "".join(user_text_bold), "".join(edited_text_bold)
 
