@@ -12,30 +12,7 @@ except ImportError:
     print("Please install the ollama package (pip install ollama).")
     Client = None
 
-# --------------
-# Configurable model name
-# --------------
-MODEL_NAME = "gemma3:4b"  # Adjust to your local model or naming
-
-# --------------
-# Scratchpad folder
-# --------------
-SCRATCHPAD_DIR = "log"
-
-# --------------
-# Configurable prompts for each button
-# --------------
-PROMPTS = {
-    "Grammar": "Fix grammar issues without altering the meaning.",
-    "Proofread": "Proofread the text comprehensively, correcting errors and improving readability.",
-    "Natural": "Refine awkward phrasing to make the text feel natural while preserving the original meaning.",
-    "Streamline": "Remove unnecessary elements, clarify the message, and ensure coherence and ease of understanding.",
-    "Awkward": "Fix only awkward or poorly written sentences without making other changes.",
-    "Rewrite": "Rewrite the text to improve clarity, flow, and overall readability.",
-    "Concise": "Make the text more concise by removing redundancy and unnecessary content.",
-    "Polish": "Refine awkward words or phrases to give the text a polished and professional tone.",
-    "Improve": "Enhance the text by proofreading and improving its clarity, flow, and coherence.",
-}
+from settings import MODEL_NAME, SCRATCHPAD_DIR, PROMPTS
 
 # --------------
 # Custom dialog to allow an 80-character-wide prompt entry
