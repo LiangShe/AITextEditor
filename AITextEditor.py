@@ -104,17 +104,12 @@ class EditorApp:
         # Ollama client (make sure you've installed and are running your local LLM server)
         self.ollama_client = Client() if Client else None
 
-        # Text area (scrolled)
-        self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=80, height=25)
-        self.text_area.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
-
         # Frame for buttons
         btn_frame = tk.Frame(self.root)
         btn_frame.pack(fill=tk.X, padx=5, pady=5)
 
         # Create standard editing buttons
-        for label in ["Grammar", "Proofread", "Natural", "Streamline",
-                      "Awkward", "Rewrite", "Concise", "Polish", "Improve"]:
+        for label in PROMPTS.keys():
             b = tk.Button(
                 btn_frame, 
                 text=label, 
@@ -138,6 +133,10 @@ class EditorApp:
         tk.Button(
             btn_frame, text="Quit", command=self.root.quit
         ).pack(side=tk.RIGHT, padx=2)
+
+        # Text area (scrolled)
+        self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=80, height=25)
+        self.text_area.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
         # Frame for apply-changes options
         self.accept_reject_frame = tk.Frame(self.root)
