@@ -4,6 +4,7 @@ import difflib
 import re
 from datetime import datetime
 import textwrap
+import yaml
 import os
 
 try:
@@ -12,7 +13,19 @@ except ImportError:
     print("Please install the ollama package (pip install ollama).")
     Client = None
 
-from settings import MODEL_NAME, SCRATCHPAD_DIR, PROMPTS
+def load_settings():
+    """Loads settings from setting.yaml"""
+    SETTING_FILE = "settings.yaml"
+    if not yaml:
+        messagebox.showerror("Error", "PyYAML package is not installed. (pip install pyyaml).")
+        return None, None, None
+    try:
+        with open(SETTING_FILE, "r") as f:
+            settings = yaml.safe_load(f)
+            return settings.get("model_name"), settings.get("scratchpad_dir"), settings.get("prompts", {})
+    except FileNotFoundError:
+        messagebox.showerror("Error", "setting.yaml not found!")
+        return None, None, None
 
 # --------------
 # Custom dialog to allow an 80-character-wide prompt entry
@@ -90,6 +103,12 @@ def create_tooltip(widget, text):
 # --------------
 class EditorApp:
     def __init__(self, root):
+        # Load settings from YAML
+        self.model_name, self.scratchpad_dir, self.prompts = load_settings()
+        if not all([self.model_name, self.scratchpad_dir, self.prompts]):
+            root.quit()
+            return
+
         self.root = root
         self.root.title("AITextEditor with Local LLM - V 0.11")
 
@@ -108,26 +127,23 @@ class EditorApp:
         btn_frame = tk.Frame(self.root)
         btn_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        # Create standard editing buttons
-        for label in PROMPTS.keys():
-            b = tk.Button(
-                btn_frame, 
-                text=label, 
-                command=lambda lbl=label: self.run_llm_edit(lbl)
-            )
-            b.pack(side=tk.LEFT, padx=2)
-            # Show the prompt in a tooltip
-            create_tooltip(b, PROMPTS[label])
+        # Create button groups from prompts
+        for group_name, group_prompts in self.prompts.items():
+            # Create a labeled frame for each group
+            group_frame = tk.LabelFrame(btn_frame, text=group_name, padx=5, pady=5)
+            group_frame.pack(side=tk.LEFT, padx=5, fill=tk.Y)
 
-        # Add the Translate button BEFORE the "Custom" button
-        translate_btn = tk.Button(btn_frame, text="Translate", command=self.run_translate_prompt)
-        translate_btn.pack(side=tk.LEFT, padx=2)
-        create_tooltip(translate_btn, "Prompt user for a target language and translate the text.")
-
-        # Button for custom prompt
-        custom_btn = tk.Button(btn_frame, text="Custom", command=self.run_custom_prompt)
-        custom_btn.pack(side=tk.LEFT, padx=2)
-        create_tooltip(custom_btn, "Enter your own custom instruction.")
+            if isinstance(group_prompts, dict):
+                for label, prompt_text in group_prompts.items():
+                    b = tk.Button(
+                        group_frame,
+                        text=label,
+                        # Pass both group and label to the command
+                        command=lambda gn=group_name, lbl=label: self.run_llm(gn, lbl)
+                    )
+                    b.pack(side=tk.LEFT, padx=2)
+                    # Show the full prompt in a tooltip
+                    create_tooltip(b, prompt_text)
 
         # Quit button
         tk.Button(
@@ -169,81 +185,63 @@ class EditorApp:
     # --------------
     # Button callbacks
     # --------------
-    def run_llm_edit(self, prompt_label):
-        """Send the current text + editing prompt to the LLM and display the changes inline."""
+    def run_llm(self, group_name, prompt_label):
+        """ Based on task type, use different system prompt, send query, and process responses """
         if not self.ollama_client:
             messagebox.showerror("Error", "Ollama client not initialized or not installed.")
             return
 
         user_text = self.text_area.get("1.0", tk.END).strip()
-        if not user_text:
-            messagebox.showinfo("Info", "Please enter text to edit.")
-            return
+        Instruction = self.prompts[group_name][prompt_label]
 
-        prompt_text = PROMPTS[prompt_label]
-        self.query_llm_and_show_diff(user_text, prompt_text)
+        if group_name == 'Edit':
+            # Send the editing prompt + current text to the LLM and display the changes inline
+        
+            system_prompt = (
+                "You are a helpful, experienced assistant that carefully edits text."
+                "based on instructions. Return only the edited text, without extra commentary."
+            )
+            
+            response = self.send_llm_query(system_prompt, Instruction, user_text)
+            
+            # Show inline diff to the text widget
+            self.show_inline_diff(user_text, response)
 
-    def run_custom_prompt(self):
-        """Prompt user for a custom instruction, then run it."""
-        if not self.ollama_client:
-            messagebox.showerror("Error", "Ollama client not initialized or not installed.")
-            return
+            # Log to scratchpad with bold for differences
+            bold_user_text, bold_edited_text = self.generate_bold_diff(user_text, response)
+            self.log_to_scratchpad(
+                f"#Instruction: {Instruction} #\n\n"
+                f"##User Text:##\n{bold_user_text}\n\n"
+                f"##Edited Text:##\n{bold_edited_text}\n\n"
+            )
 
-        user_text = self.text_area.get("1.0", tk.END).strip()
-        if not user_text:
-            messagebox.showinfo("Info", "Please enter text to edit.")
-            return
+        else:
+            system_prompt = ()
+            response = self.send_llm_query(system_prompt, Instruction, user_text)
+            self.text_area.insert(tk.END, "\n" + response, ("addition",))
+            self.text_area.tag_config("addition", foreground="green")
 
-        # Custom prompt entry (80 chars wide)
-        custom_prompt = ask_custom_string("Custom Prompt", "Enter your prompt:", parent=self.root)
-        if custom_prompt:
-            self.query_llm_and_show_diff(user_text, custom_prompt)
-
-    def run_translate_prompt(self):
-        """
-        Prompt the user for the language, then translate the text to that language.
-        """
-        if not self.ollama_client:
-            messagebox.showerror("Error", "Ollama client not initialized or not installed.")
-            return
-
-        user_text = self.text_area.get("1.0", tk.END).strip()
-        if not user_text:
-            messagebox.showinfo("Info", "Please enter text to translate.")
-            return
-
-        # Ask user what language they want
-        language = simpledialog.askstring("Translate", "Enter the target language:", parent=self.root)
-        if language:
-            # Construct a translation instruction
-            translate_prompt = f"Translate the text into {language}. Return only the translated text."
-            self.query_llm_and_show_diff(user_text, translate_prompt)
-
+ 
     # --------------
-    # LLM + diff logic
+    # LLM
     # --------------
-    def query_llm_and_show_diff(self, user_text, instruction):
+    def send_llm_query(self, system_prompt, instruction, user_text, diff=False):
         """
-        Calls the local LLM with user_text + instruction,
-        receives an edited version, compares them, and highlights changes.
-        Also logs to scratchpad with bold Markdown for the changes.
+        Query the local LLM
+        if editing, compare and highlight the changes, and logs to scratchpad with bold Markdown for the changes.
         """
         # If it's the first time we are modifying text, create the scratchpad
         if not self.first_change_time:
             self.first_change_time = datetime.now().strftime("%Y%m%d_%H%M%S")
             # Ensure the scratchpad directory exists
-            os.makedirs(SCRATCHPAD_DIR, exist_ok=True)
+            os.makedirs(self.scratchpad_dir, exist_ok=True)
             
             # Construct the full path for the scratchpad file
             filename = f"AITextEditor-scratchpad_{self.first_change_time}.md"
-            self.scratchpad_filename = os.path.join(SCRATCHPAD_DIR, filename)
+            self.scratchpad_filename = os.path.join(self.scratchpad_dir, filename)
 
         # Prepare the conversation
-        system_prompt = (
-            "You are a helpful, concise assistant that carefully edits text "
-            "based on instructions. Return only the edited text, without extra commentary."
-        )
-        history = [
+        messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Instruction:\n{instruction}\n\nText:\n{user_text}"}
         ]
@@ -251,8 +249,8 @@ class EditorApp:
         response = {}
         try:
             response = self.ollama_client.chat(
-                model=MODEL_NAME,
-                messages=history,
+                model=self.model_name,
+                messages=messages,
                 options={
                     'num_predict': 2048,
                     'temperature': 0.7,
@@ -264,23 +262,15 @@ class EditorApp:
             return
 
         # The "message" content from the LLM (the new text)
-        edited_text = ""
+        content = ""
         if "message" in response and "content" in response["message"]:
-            edited_text = response["message"]["content"].strip()
+            content = response["message"]["content"].strip()
         else:
             messagebox.showinfo("LLM Error", "No content received from LLM.")
             return
+        
+        return content
 
-        # Show inline diff to the text widget
-        self.show_inline_diff(user_text, edited_text)
-
-        # Log to scratchpad with bold for differences
-        bold_user_text, bold_edited_text = self.generate_bold_diff(user_text, edited_text)
-        self.log_to_scratchpad(
-            f"#Instruction: {instruction} #\n\n"
-            f"##User Text:##\n{bold_user_text}\n\n"
-            f"##Edited Text:##\n{bold_edited_text}\n\n"
-        )
 
     def show_inline_diff(self, old_text, new_text):
         """

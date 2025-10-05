@@ -1,0 +1,37 @@
+# --------------
+# Configurable model name
+# --------------
+model_name: "gemma3:4b" # Adjust to your local model or naming
+
+# --------------
+# Scratchpad folder
+# --------------
+scratchpad_dir: "log"
+
+# --------------
+# Configurable prompts for each button
+# --------------
+prompts:
+  Generate:
+    submit: 
+    summary: "summarize each section of this article."
+    check: "check for ambiguity and logic errors in the text"
+    review: "critically evaluate the significance and weakness of the article in detail. List each points and offer constructive suggestions."
+    English: "translate to English"
+    Chinese: "translate to Chinese"
+    Spanlish: "translate to Spanlish"
+
+  Edit:
+    All: "Correct errors, align the verb tenses, polish the text to improve the flow, clarity and readability, keep logically sound and concise, keep the original meaning and paragraph breaks."
+    Improve: "Enhance the text by proofreading and improving its clarity, flow, and coherence."
+    Rewrite: "Rewrite the text to improve clarity, flow, and overall readability."
+    Concise: "Make the text more concise by removing redundancy and unnecessary content."
+    Streamline: "Remove unnecessary elements, clarify the message, and ensure coherence and ease of understanding."
+    Proofread: "Proofread the text comprehensively, correcting errors and improving readability."
+    Natural: "Refine awkward phrasing to make the text feel natural while preserving the original meaning."
+    Polish: "Refine awkward words or phrases to give the text a polished and professional tone."
+    Awkward: "Fix only awkward or poorly written sentences without making other changes."
+    Grammar: "Fix grammar issues without altering the meaning."
+
+
+
