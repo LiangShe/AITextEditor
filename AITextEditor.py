@@ -151,7 +151,7 @@ class EditorApp:
         ).pack(side=tk.RIGHT, padx=2)
 
         # Text area (scrolled)
-        self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=80, height=25)
+        self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=80, height=25, font=("TkFixedFont", 12))
         self.text_area.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
         # Frame for apply-changes options
@@ -300,7 +300,7 @@ class EditorApp:
                 self.text_area.insert(tk.END, text, ("addition",))
 
         # Tag styles
-        self.text_area.tag_config("deletion", foreground="red")
+        self.text_area.tag_config("deletion", foreground="red", overstrike=True)
         self.text_area.tag_config("addition", foreground="green")
 
     def generate_bold_diff(self, original_text, edited_text):
