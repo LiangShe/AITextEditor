@@ -27,6 +27,9 @@ def load_settings():
         messagebox.showerror("Error", "setting.yaml not found!")
         return None, None, None
 
+def text_length(text):
+    return len(text) if text is not None else 0
+
 # --------------
 # Custom dialog to allow an 80-character-wide prompt entry
 # --------------
@@ -151,7 +154,7 @@ class EditorApp:
         ).pack(side=tk.RIGHT, padx=2)
 
         # Text area (scrolled)
-        self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=80, height=25, font=("TkFixedFont", 12))
+        self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=80, height=25, font=("Calibri", 14))
         self.text_area.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
         # Frame for apply-changes options
@@ -246,15 +249,34 @@ class EditorApp:
             {"role": "user", "content": f"Instruction:\n{instruction}\n\nText:\n{user_text}"}
         ]
 
+        # --- Dynamically set context size based on input length ---
+        # Estimate token count (1 token ~= 4 chars) and add a buffer.
+        # This ensures the context window is large enough for the prompt + response.
+        num_predict = 2048  # Max tokens for the model to generate
+        prompt_chars = text_length(system_prompt) + text_length(instruction) + text_length(user_text)
+        estimated_tokens = prompt_chars // 4 
+        print(f"estimated tokens: {estimated_tokens}")
+
+        # Choose a context size (num_ctx) that fits the prompt and the expected output.
+        # We'll use powers of 2, which is common practice.
+        required_size = estimated_tokens + num_predict
+        if required_size <= 2048:
+            context_size = 2048
+        elif required_size <= 4096:
+            context_size = 4096
+        else:
+            context_size = 8192 # Default to a larger size for very long inputs
+
         response = {}
         try:
             response = self.ollama_client.chat(
                 model=self.model_name,
                 messages=messages,
                 options={
-                    'num_predict': 2048,
-                    'temperature': 0.7,
-                    'top_p': 0.9,
+                    'num_ctx': context_size,
+                    'num_predict': num_predict,
+                    'temperature': 0.7, # You could also make these configurable
+                    'top_p': 0.9,       # in settings.yaml
                 },
             )
         except Exception as e:
