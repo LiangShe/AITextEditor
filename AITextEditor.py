@@ -22,10 +22,10 @@ def load_settings():
     try:
         with open(SETTING_FILE, "r") as f:
             settings = yaml.safe_load(f)
-            return settings.get("model_name"), settings.get("scratchpad_dir"), settings.get("prompts", {})
+            return settings.get("model_name"), settings.get("scratchpad_dir"), settings.get("prompts", {}), settings.get("ollama_host", "localhost:11434")
     except FileNotFoundError:
         messagebox.showerror("Error", "setting.yaml not found!")
-        return None, None, None
+        return None, None, None, None
 
 def text_length(text):
     return len(text) if text is not None else 0
@@ -107,8 +107,8 @@ def create_tooltip(widget, text):
 class EditorApp:
     def __init__(self, root):
         # Load settings from YAML
-        self.model_name, self.scratchpad_dir, self.prompts = load_settings()
-        if not all([self.model_name, self.scratchpad_dir, self.prompts]):
+        self.model_name, self.scratchpad_dir, self.prompts, self.ollama_host = load_settings()
+        if not all([self.model_name, self.scratchpad_dir, self.prompts, self.ollama_host]):
             root.quit()
             return
 
@@ -124,7 +124,7 @@ class EditorApp:
         # 2) Initialize widgets and buttons
 
         # Ollama client (make sure you've installed and are running your local LLM server)
-        self.ollama_client = Client() if Client else None
+        self.ollama_client = Client(host=self.ollama_host) if Client else None
 
         # Frame for buttons
         btn_frame = tk.Frame(self.root)
