@@ -15,13 +15,13 @@ Forked from [TextEnhanceAI](https://github.com/wenrolland/TextEnhanceAI)
 
 2. **Multiple Editing Modes**  
    - Built-in prompts let you quickly fix grammar, streamline awkward phrases, or make your text more concise.  
-   - A customizable “Custom Prompt” option allows you to craft specialized instructions for the LLM.
+   - A direct "submit" button allows you to use specialized instructions in the editor for the LLM.
 
 3. **Accept / Reject All Changes**  
    - Quickly apply all AI-suggested edits with “Accept All Changes,” or revert them entirely with “Reject All Changes.”  
 
 4. **Scratchpad Logging**  
-   - Every edit is logged to a Markdown scratchpad file. [Example](/TextEnhanceAI-scratchpad_20250605_191604.md)
+   - Every edit is logged to a Markdown scratchpad file.
    - The original user text and the LLM’s edited text are saved side by side, with any removed/added words highlighted in **bold** Markdown, helping you track changes over time.
 
 5. **Local LLM Support**  
@@ -31,7 +31,7 @@ Forked from [TextEnhanceAI](https://github.com/wenrolland/TextEnhanceAI)
 ## Getting Started
 
 1. **Install Requirements**  
-   - Ensure Python 3.7+ is [installed](https://www.python.org/downloads/).  
+   - Ensure Python 3.7+ is installed.  
    - Install the [Ollama](https://github.com/ollama/ollama) package.
    - Download gemma3:4b in Ollama :
       ```bash
@@ -54,7 +54,10 @@ Forked from [TextEnhanceAI](https://github.com/wenrolland/TextEnhanceAI)
    - Click on an editing button (e.g., “Grammar,” “Proofread”) to send a prompt to the local LLM.  
    - The edited text will be displayed inline, with suggested deletions in red and additions in green.
 
-5. **Accept/Reject Changes**  
-   - When ready, you can accept all or reject all the AI-suggested edits.
-   - The edition scratchpad is saved in the same directory. This way, you can review the output, whatever your choices.
-   - When done, simply copy the text and paste it where you want to use it.
+
+## TODO
+
+- [x] Adds Model dropdown menu to choose models 
+
+- [ ] improve inline diff
+
