@@ -6,12 +6,21 @@ from datetime import datetime
 import textwrap
 import yaml
 import os
+import threading
 
 try:
     from ollama import Client
+    try:
+        # Prefer top-level list API when available
+        from ollama import list as ollama_list, ListResponse
+    except Exception:
+        ollama_list = None
+        ListResponse = None
 except ImportError:
     print("Please install the ollama package (pip install ollama).")
     Client = None
+    ollama_list = None
+    ListResponse = None
 
 def load_settings():
     """Loads settings from setting.yaml"""
@@ -126,6 +135,20 @@ class EditorApp:
         # Ollama client (make sure you've installed and are running your local LLM server)
         self.ollama_client = Client(host=self.ollama_host) if Client else None
 
+        # Top bar: model selection
+        top_bar = tk.Frame(self.root)
+        top_bar.pack(fill=tk.X, padx=5, pady=5)
+        model_label = tk.Label(top_bar, text="Model:")
+        model_label.pack(side=tk.LEFT, padx=(0, 2))
+        self.model_var = tk.StringVar(value=self.model_name)
+        self.model_optionmenu = tk.OptionMenu(top_bar, self.model_var, self.model_name)
+        self.model_optionmenu.pack(side=tk.LEFT, padx=(0, 6))
+        refresh_btn = tk.Button(top_bar, text="Refresh", command=self.populate_model_menu)
+        refresh_btn.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # Load models initially
+        self.populate_model_menu()
+
         # Frame for buttons
         btn_frame = tk.Frame(self.root)
         btn_frame.pack(fill=tk.X, padx=5, pady=5)
@@ -184,6 +207,11 @@ class EditorApp:
         # For scratchpad logging:
         self.scratchpad_filename = None
         self.first_change_time = None
+
+        # Status label
+        self.status_var = tk.StringVar(value="Ready")
+        self.status_label = tk.Label(self.root, textvariable=self.status_var, anchor="w")
+        self.status_label.pack(fill=tk.X, padx=5, pady=(0,5))
 
     # --------------
     # Button callbacks
@@ -293,6 +321,71 @@ class EditorApp:
         
         return content
 
+    def get_available_models(self):
+        """Return a list of available local Ollama model names."""
+        models = []
+        # 1) Try official top-level API first
+        if ollama_list is not None:
+            try:
+                resp = ollama_list()
+                # Newer package: ListResponse with .models attribute
+                if hasattr(resp, 'models'):
+                    for m in getattr(resp, 'models') or []:
+                        # objects have .model (name)
+                        name = getattr(m, 'model', None) or getattr(m, 'name', None)
+                        if isinstance(name, str):
+                            models.append(name)
+                # Fallback: dict with 'models'
+                elif isinstance(resp, dict) and 'models' in resp:
+                    for m in resp.get('models') or []:
+                        if isinstance(m, dict):
+                            name = m.get('name') or m.get('model')
+                        else:
+                            name = str(m)
+                        if isinstance(name, str):
+                            models.append(name)
+            except Exception:
+                # ignore and fallback to client
+                pass
+        # 2) Fallback to client.list() if needed
+        if not models and self.ollama_client and hasattr(self.ollama_client, 'list'):
+            try:
+                resp = self.ollama_client.list()
+                items = []
+                if hasattr(resp, 'models'):
+                    items = resp.models  # type: ignore[attr-defined]
+                elif isinstance(resp, dict) and 'models' in resp:
+                    items = resp['models'] or []
+                elif isinstance(resp, list):
+                    items = resp
+                for m in items:
+                    name = None
+                    if isinstance(m, dict):
+                        name = m.get('name') or m.get('model')
+                    else:
+                        name = getattr(m, 'model', None) or getattr(m, 'name', None) or (str(m) if m else None)
+                    if isinstance(name, str):
+                        models.append(name)
+            except Exception:
+                pass
+        if not models:
+            models = [self.model_name]
+        return sorted(set(models))
+
+
+    def populate_model_menu(self):
+        """Load models from Ollama and update the dropdown."""
+        models = self.get_available_models()
+        try:
+            menu = self.model_optionmenu["menu"]
+            menu.delete(0, "end")
+            for m in models:
+                menu.add_command(label=m, command=lambda v=m: self.model_var.set(v))
+            if self.model_var.get() not in models:
+                self.model_var.set(models[0])
+        except Exception:
+            if models:
+                self.model_var.set(models[0])
 
     def show_inline_diff(self, old_text, new_text):
         """
