@@ -33,11 +33,14 @@ Forked from [TextEnhanceAI](https://github.com/wenrolland/TextEnhanceAI)
 1. **Install Requirements**  
    - Ensure Python 3.7+ is [installed](https://www.python.org/downloads/).  
    - Install the [Ollama](https://github.com/ollama/ollama) package.
-   - Download llama3.1:8b in Ollama :
+   - Download gemma3:4b in Ollama :
       ```bash
       ollama pull gemma3:4b
       ```
-   - Install other Python dependencies as needed (e.g., `tkinter`—usually bundled with Python, `difflib`—comes with standard library).
+   - Install Python dependencies 
+      ```bash
+      pip install -r requirements.txt
+      ```
 
 2. **Run the App**  
    Clone the repository or simply download AITextEditor.py to get the program. Launch it using :
