@@ -295,6 +295,13 @@ class EditorApp:
         else:
             context_size = 8192 # Default to a larger size for very long inputs
 
+        try:
+            selected_model = (self.model_var.get() or "").strip()
+        except Exception:
+            selected_model = ""
+        if selected_model:
+            self.model_name = selected_model
+
         response = {}
         try:
             response = self.ollama_client.chat(
