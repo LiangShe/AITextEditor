@@ -59,5 +59,5 @@ Forked from [TextEnhanceAI](https://github.com/wenrolland/TextEnhanceAI)
 
 - [x] Adds Model dropdown menu to choose models 
 
-- [ ] improve inline diff
+- [x] improve diff computation
 

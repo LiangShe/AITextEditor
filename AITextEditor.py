@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import scrolledtext, filedialog, messagebox, simpledialog
-import difflib
+from diff_match_patch import diff_match_patch
 import re
 from datetime import datetime
 import textwrap
@@ -250,12 +250,15 @@ class EditorApp:
             )
             
             response = self.send_llm_query(system_prompt, Instruction, user_text)
-            
+
+            # compute diffs
+            diffs = self.compute_diffs(user_text, response)
+
             # Show inline diff to the text widget
-            self.show_inline_diff(user_text, response)
+            self.show_inline_diff(diffs)
 
             # Log to scratchpad with bold for differences
-            bold_user_text, bold_edited_text = self.generate_bold_diff(user_text, response)
+            bold_user_text, bold_edited_text = self.generate_bold_diff(diffs)
             self.log_to_scratchpad(
                 f"#Instruction: {Instruction} #\n\n"
                 f"##User Text:##\n{bold_user_text}\n\n"
@@ -433,69 +436,57 @@ class EditorApp:
             if models:
                 self.model_var.set(models[0])
 
-    def show_inline_diff(self, old_text, new_text):
+    def compute_diffs(self, old_text, new_text):
+        differ = diff_match_patch()
+        diffs = differ.diff_main(old_text, new_text)
+        differ.diff_cleanupSemantic(diffs)
+        return diffs
+
+    def show_inline_diff(self, diffs):
         """
-        Compute a diff using difflib and insert inline color-coded changes
+        Compute a diff using diff-match-patch and insert inline color-coded changes
         into the text widget. Deletions in red, additions in green.
         """
         self.text_area.delete("1.0", tk.END)
 
-        # Split on whitespace while keeping the whitespace tokens so that
-        # newline characters and other spacing are preserved in the output
-        old_tokens = re.split(r'(\s+)', old_text)
-        new_tokens = re.split(r'(\s+)', new_text)
-
-        diff = difflib.ndiff(old_tokens, new_tokens)
-
-        for token in diff:
-            # token starts with '  ' (no change), '- ' (deletion), or '+ ' (addition)
-            text = token[2:]
-            if token.startswith("  "):
-                # no change
+        for operation, text in diffs:
+            if operation == diff_match_patch.DIFF_EQUAL:
                 self.text_area.insert(tk.END, text)
-            elif token.startswith("- "):
-                # deletion
+            elif operation == diff_match_patch.DIFF_DELETE:
                 self.text_area.insert(tk.END, text, ("deletion",))
-            elif token.startswith("+ "):
-                # addition
+            elif operation == diff_match_patch.DIFF_INSERT:
                 self.text_area.insert(tk.END, text, ("addition",))
 
         # Tag styles
         self.text_area.tag_config("deletion", foreground="red", overstrike=True)
         self.text_area.tag_config("addition", foreground="green")
 
-    def generate_bold_diff(self, original_text, edited_text):
+    def generate_bold_diff(self, diffs):
         """
         Generate two strings:
          - In the 'User Text', highlight removed words in bold
          - In the 'Edited Text', highlight added words in bold
         """
-        # Split on whitespace while preserving it to maintain formatting
-        original_tokens = re.split(r'(\s+)', original_text)
-        edited_tokens = re.split(r'(\s+)', edited_text)
-        diff = difflib.ndiff(original_tokens, edited_tokens)
 
         user_text_bold = []
         edited_text_bold = []
 
-        for token in diff:
-            word = token[2:]
-            if token.startswith("  "):
-                # No change
-                user_text_bold.append(word)
-                edited_text_bold.append(word)
-            elif token.startswith("- "):
+        for operation, text in diffs:
+            if operation == diff_match_patch.DIFF_EQUAL:
+                user_text_bold.append(text)
+                edited_text_bold.append(text)
+            elif operation == diff_match_patch.DIFF_DELETE:
                 # Removed word
-                if word.strip():  # Only bold non-whitespace
-                    user_text_bold.append(f"**{word}**")
+                if text.strip():  # Only bold non-whitespace
+                    user_text_bold.append(f"**{text}**")
                 else:
-                    user_text_bold.append(word)
-            elif token.startswith("+ "):
+                    user_text_bold.append(text)
+            elif operation == diff_match_patch.DIFF_INSERT:
                 # Added word
-                if word.strip(): # Only bold non-whitespace
-                    edited_text_bold.append(f"**{word}**")
+                if text.strip(): # Only bold non-whitespace
+                    edited_text_bold.append(f"**{text}**")
                 else:
-                    edited_text_bold.append(word)
+                    edited_text_bold.append(text)
 
         # Rebuild as strings, joining without extra spaces
         return "".join(user_text_bold), "".join(edited_text_bold)
