@@ -149,6 +149,22 @@ class EditorApp:
         # Load models initially
         self.populate_model_menu()
 
+        # Check for running models and set as default if configured
+        running_models = self.get_running_models()
+        if running_models:
+            # Picking first running model:
+            selected_model = list(running_models.keys())[0]
+
+        # Map model names from list API to ps API (they might return different formats)
+        try:
+            # Update the model_var if needed
+            if selected_model and selected_model != self.model_var.get():
+                self.model_var.set(selected_model)
+                # Also update self.model_name for future queries
+                self.model_name = selected_model
+        except Exception as e:
+            print(f"Error selecting the running models use default {e}")
+
         # Frame for buttons
         btn_frame = tk.Frame(self.root)
         btn_frame.pack(fill=tk.X, padx=5, pady=5)
@@ -295,6 +311,14 @@ class EditorApp:
         else:
             context_size = 8192 # Default to a larger size for very long inputs
 
+        # Check if the selected model is already running and has sufficient context
+        running_models = self.get_running_models()
+        selected_model = (self.model_var.get() or "").strip()
+        if selected_model and selected_model in running_models:
+            running_context = running_models[selected_model]
+            if running_context >= required_size:
+                context_size = running_context
+
         try:
             selected_model = (self.model_var.get() or "").strip()
         except Exception:
@@ -378,6 +402,21 @@ class EditorApp:
         if not models:
             models = [self.model_name]
         return sorted(set(models))
+
+    def get_running_models(self):
+        """Return dictionary of running models and their context lengths."""
+        running_models = {}
+        try:
+            resp = self.ollama_client.ps() if self.ollama_client else None
+            if resp and hasattr(resp, 'models'):
+                for m in resp.models:
+                    name = getattr(m, 'model', None) or getattr(m, 'name', None)
+                    if isinstance(name, str):
+                        if hasattr(m, 'context_length'):
+                            running_models[name] = m.context_length
+        except Exception:
+            pass
+        return running_models
 
 
     def populate_model_menu(self):
