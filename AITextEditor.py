@@ -249,7 +249,7 @@ class EditorApp:
                 "based on instructions. Return only the edited text, without extra commentary."
             )
             
-            response = self.send_llm_query(system_prompt, Instruction, user_text)
+            response, _ = self.send_llm_query(system_prompt, Instruction, user_text)
 
             # compute diffs
             diffs = self.compute_diffs(user_text, response)
@@ -267,7 +267,13 @@ class EditorApp:
 
         else:
             system_prompt = ()
-            response = self.send_llm_query(system_prompt, Instruction, user_text)
+            response, thinking_content = self.send_llm_query(system_prompt, Instruction, user_text, use_thinking=True)
+
+            # Display thinking content if available
+            if thinking_content:
+                self.text_area.insert(tk.END, "\n**Thinking:**\n" + thinking_content + "\n\n", ("thinking",))
+                self.text_area.tag_config("thinking", foreground="gray")
+            
             self.text_area.insert(tk.END, "\n" + response, ("addition",))
             self.text_area.tag_config("addition", foreground="green")
 
@@ -275,7 +281,7 @@ class EditorApp:
     # --------------
     # LLM
     # --------------
-    def send_llm_query(self, system_prompt, instruction, user_text, diff=False):
+    def send_llm_query(self, system_prompt, instruction, user_text, diff=False, use_thinking=False):
         """
         Query the local LLM
         if editing, compare and highlight the changes, and logs to scratchpad with bold Markdown for the changes.
@@ -340,6 +346,7 @@ class EditorApp:
                     'temperature': 0.7, # You could also make these configurable
                     'top_p': 0.9,       # in settings.yaml
                 },
+                think=use_thinking,
             )
         except Exception as e:
             messagebox.showerror("LLM Error", f"An error occurred: {e}")
@@ -353,7 +360,14 @@ class EditorApp:
             messagebox.showinfo("LLM Error", "No content received from LLM.")
             return
         
-        return content
+        # Extract thinking content if present
+        thinking_content = None
+        if hasattr(response, 'message') and hasattr(response.message, 'thinking'):
+            thinking_content = response.message.thinking
+        elif isinstance(response, dict) and "message" in response and "thinking" in response["message"]:
+            thinking_content = response["message"]["thinking"]
+
+        return content, thinking_content
 
     def get_available_models(self):
         """Return a list of available local Ollama model names."""
