@@ -145,6 +145,9 @@ class EditorApp:
         self.model_optionmenu.pack(side=tk.LEFT, padx=(0, 6))
         refresh_btn = tk.Button(top_bar, text="Refresh", command=self.populate_model_menu)
         refresh_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self.thinking_mode_var = tk.BooleanVar(value=False)
+        thinking_check = tk.Checkbutton(top_bar, text="Thinking Mode", variable=self.thinking_mode_var)
+        thinking_check.pack(side=tk.LEFT, padx=(0, 8))
         
         # Load models initially
         self.populate_model_menu()
@@ -267,7 +270,8 @@ class EditorApp:
 
         else:
             system_prompt = ()
-            response, thinking_content = self.send_llm_query(system_prompt, Instruction, user_text, use_thinking=True)
+            use_thinking = self.thinking_mode_var.get()
+            response, thinking_content = self.send_llm_query(system_prompt, Instruction, user_text, use_thinking=use_thinking)
 
             # Display thinking content if available
             if thinking_content:
