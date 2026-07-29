@@ -1,7 +1,7 @@
 # --------------
 # Configurable model name
 # --------------
-model_name: "gemma3:4b" # Adjust to your local model or naming
+model_name: "gemma4:12b" # Adjust to your local model or naming
 
 # --------------
 # Ollama host address
